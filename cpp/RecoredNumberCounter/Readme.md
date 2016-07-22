@@ -23,11 +23,11 @@ Here is a piece of example code:
     // Create a counter. Print the debug info every 1000 records to the stderr.
     PASARecordProcessCounter counter(1000, stderr); 
     
-    for(....) { // for each record processing
-        // ... process a record
+    for(....) { // for each record,
+        // ... process the record.
         // ...
-        counter.counter_add_one(); // +1
+        counter.counter_add_one(); // +1 record to the counter!
     }
-    counter.counter_done(); // Done!
+    counter.counter_done(); // All records are done!
         
 ```
