@@ -5,3 +5,6 @@ I try to minimize the dependencies as much as possible, so you can easily "copy 
 
 ## CPP Code
 1. **Record Number Counter**. A util counter to record the current count info and print a progress line automatically.
+
+## Scala
+1. **Akka-based Remote Logger Server**. A util to help debugging distributed programms.

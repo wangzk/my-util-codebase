@@ -1,8 +1,10 @@
 package wzk.akkalogger.message
 
+
 /**
-  * Created by wangzhaokang on 3/21/17.
+  * Message type that carries metrics that need to be averaged on the logger side.
   */
-class AverageMetricLogMessage {
+case class AverageMetricLogMessage(val metrics:Map[String, Long]) {
+
 
 }

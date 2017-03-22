@@ -1,8 +1,8 @@
 package wzk.akkalogger.client
 
 /**
-  * Created by wangzhaokang on 3/21/17.
+  * A singleton that carries the process level client
   */
-class GetProcessLevelClient {
-
+object ProcessLevelClient {
+  val client:AkkaLoggerClient = new AkkaLoggerClient()
 }
