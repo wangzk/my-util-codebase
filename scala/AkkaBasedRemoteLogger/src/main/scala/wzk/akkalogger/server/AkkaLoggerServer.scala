@@ -4,7 +4,7 @@ import akka.actor.Actor.Receive
 import akka.actor.{ActorSystem, Props}
 import akka.event.Logging
 import akka.util.Timeout
-import wzk.akkalogger.message.AverageMetricLogMessage
+import wzk.akkalogger.message.{AverageMetricLogMessage, SimpleStringMessage}
 import wzk.akkalogger.util.RemoteRelatedUtil
 
 import scala.collection.mutable
@@ -68,6 +68,10 @@ class LoggerServerActor extends akka.actor.Actor {
           metricsNeedAverage.getOrElse(metric, 0L) + value
       }
       printCurrentAverageMetrics()
+    }
+    case SimpleStringMessage(msg) => {
+      System.out.println(s"[MSG]${sender}: $msg")
+      System.out.flush()
     }
     case "reset" => {
       metricsNeedAverage.clear()

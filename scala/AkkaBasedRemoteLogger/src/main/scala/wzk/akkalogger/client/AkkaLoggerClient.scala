@@ -5,7 +5,7 @@ import java.util.Properties
 
 import akka.actor.ActorSystem
 import akka.util.Timeout
-import wzk.akkalogger.message.AverageMetricLogMessage
+import wzk.akkalogger.message.{AverageMetricLogMessage, SimpleStringMessage}
 import wzk.akkalogger.util.RemoteRelatedUtil
 
 import scala.concurrent.Await
@@ -51,12 +51,25 @@ class AkkaLoggerClient(private var configFilePath:String = "akkalogger.conf") {
     debugLocalLogger.info(s"Successfully get logger server ActorRef:${loggerServer}.")
   }
 
-  def logMetrics(metrics:Map[String, Long]):Unit = {
+  private[this] def checkServerAvailable():Unit = {
     if (loggerServer == null) {
       debugLocalLogger.severe("try to use a un-initialized log service.")
-      throw new Exception("not initialized")
+      throw new Exception("server not initialized")
     }
+  }
+
+  /**
+    * Send metrics to the server and the metrics will be automatically averaged on the server side.
+    * @param metrics Metrics. It is a map (metric:String -> value:Long).
+    */
+  def logMetrics(metrics:Map[String, Long]):Unit = {
+    checkServerAvailable()
     loggerServer ! AverageMetricLogMessage(metrics)
+  }
+
+  def log(msg:String): Unit = {
+    checkServerAvailable()
+    loggerServer ! SimpleStringMessage(msg)
   }
 }
 
