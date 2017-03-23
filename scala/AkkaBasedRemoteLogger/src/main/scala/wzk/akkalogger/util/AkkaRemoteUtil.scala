@@ -19,6 +19,7 @@ object RemoteRelatedUtil {
        |      port = $port
        |    }
        |  }
+       |  loglevel = "ERROR"
        |}
      """.stripMargin)
 

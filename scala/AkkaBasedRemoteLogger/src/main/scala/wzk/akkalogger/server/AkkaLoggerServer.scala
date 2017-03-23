@@ -1,5 +1,7 @@
 package wzk.akkalogger.server
 
+import java.text.SimpleDateFormat
+
 import akka.actor.Actor.Receive
 import akka.actor.{ActorSystem, Props}
 import akka.event.Logging
@@ -57,6 +59,7 @@ class LoggerServerActor extends akka.actor.Actor {
   val log = Logging(context.system, this)
   val metricsNeedAverage:mutable.Map[String, Long] = new mutable.HashMap[String, Long]()
   var metricLogCount = 0L
+  val simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd- HH:mm:ss.SSS")
 
   def receive = {
     case AverageMetricLogMessage(metrics) => {
@@ -70,7 +73,7 @@ class LoggerServerActor extends akka.actor.Actor {
       printCurrentAverageMetrics()
     }
     case SimpleStringMessage(msg) => {
-      System.out.println(s"[MSG]${sender}: $msg")
+      System.out.println(s"[MSG]${simpleDateFormat.format(new java.util.Date())}${sender}: $msg")
       System.out.flush()
     }
     case "reset" => {
@@ -93,6 +96,7 @@ class LoggerServerActor extends akka.actor.Actor {
 
   private[this] def printCurrentAverageMetrics(): Unit = {
     println("\n===== Current Average Metrics =====")
+    println(simpleDateFormat.format(new java.util.Date()))
     println("METRIC\t\tCOUNT\t\tAVERAGE")
     for ((metric, value) <- metricsNeedAverage) {
       printf("%s\t\t%d\t\t%.2f\n", metric, metricLogCount, value / metricLogCount.toDouble)

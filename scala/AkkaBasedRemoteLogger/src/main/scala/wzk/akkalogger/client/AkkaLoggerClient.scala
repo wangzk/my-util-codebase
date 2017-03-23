@@ -10,7 +10,9 @@ import wzk.akkalogger.util.RemoteRelatedUtil
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{DAYS, FiniteDuration}
+
 import scala.io.Source
+import scala.collection.JavaConversions._
 
 
 /**
@@ -65,6 +67,12 @@ class AkkaLoggerClient(private var configFilePath:String = "akkalogger.conf") {
   def logMetrics(metrics:Map[String, Long]):Unit = {
     checkServerAvailable()
     loggerServer ! AverageMetricLogMessage(metrics)
+  }
+
+  def logMetrics(metrics:java.util.Map[String, java.lang.Long]):Unit = {
+    checkServerAvailable()
+    val scalaMap = metrics.toMap.map(pair => (pair._1, pair._2.toLong))
+    loggerServer ! AverageMetricLogMessage(scalaMap)
   }
 
   def log(msg:String): Unit = {
