@@ -6,4 +6,4 @@ package wzk.akkalogger.message
   */
 case class AverageMetricLogMessage(val metrics:Map[String, Long]) {}
 
-case class SimpleStringMessage(val msg:String) {}
+case class SimpleStringMessage(val senderHostName:String, val msg:String) {}

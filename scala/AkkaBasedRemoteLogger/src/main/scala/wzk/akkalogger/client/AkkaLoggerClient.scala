@@ -1,6 +1,7 @@
 package wzk.akkalogger.client
 
 import java.io.File
+import java.net.InetAddress
 import java.util.Properties
 
 import akka.actor.ActorSystem
@@ -10,7 +11,6 @@ import wzk.akkalogger.util.RemoteRelatedUtil
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{DAYS, FiniteDuration}
-
 import scala.io.Source
 import scala.collection.JavaConversions._
 
@@ -26,6 +26,7 @@ class AkkaLoggerClient(private var configFilePath:String = "akkalogger.conf") {
   private var system:ActorSystem = null
   private var loggerServer: akka.actor.ActorRef = null
   private implicit val timeout = new Timeout(FiniteDuration(1, DAYS))
+  private val myHostName = InetAddress.getLocalHost.getHostName
 
   loadConfigure()
   loadActorSystem()
@@ -77,7 +78,12 @@ class AkkaLoggerClient(private var configFilePath:String = "akkalogger.conf") {
 
   def log(msg:String): Unit = {
     checkServerAvailable()
-    loggerServer ! SimpleStringMessage(msg)
+    loggerServer ! SimpleStringMessage(myHostName, msg)
   }
+}
+
+
+object AkkaLoggerClient {
+  val processLevelClient = new AkkaLoggerClient()
 }
 

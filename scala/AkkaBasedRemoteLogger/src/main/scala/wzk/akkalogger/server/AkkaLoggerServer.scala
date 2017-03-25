@@ -54,12 +54,15 @@ object AkkaLoggerServer {
 }
 
 
+/**
+  * The actor who actually response for the log messages from clients.
+  */
 class LoggerServerActor extends akka.actor.Actor {
 
   val log = Logging(context.system, this)
   val metricsNeedAverage:mutable.Map[String, Long] = new mutable.HashMap[String, Long]()
   var metricLogCount = 0L
-  val simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd- HH:mm:ss.SSS")
+  val simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
 
   def receive = {
     case AverageMetricLogMessage(metrics) => {
@@ -72,8 +75,8 @@ class LoggerServerActor extends akka.actor.Actor {
       }
       printCurrentAverageMetrics()
     }
-    case SimpleStringMessage(msg) => {
-      System.out.println(s"[MSG]${simpleDateFormat.format(new java.util.Date())}${sender}: $msg")
+    case SimpleStringMessage(senderHostName, msg) => {
+      System.out.println(s"[MSG]${simpleDateFormat.format(new java.util.Date())} from ${senderHostName}: $msg")
       System.out.flush()
     }
     case "reset" => {
