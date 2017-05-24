@@ -7,3 +7,7 @@ package wzk.akkalogger.message
 case class AverageMetricLogMessage(val metrics:Map[String, Long]) {}
 
 case class SimpleStringMessage(val senderHostName:String, val msg:String) {}
+
+case class ClearMetricLogMessage(msg:String) {}
+
+case class WriteMetricLogMessage(val fileName:String) {}

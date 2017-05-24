@@ -6,7 +6,7 @@ import java.util.Properties
 
 import akka.actor.ActorSystem
 import akka.util.Timeout
-import wzk.akkalogger.message.{AverageMetricLogMessage, SimpleStringMessage}
+import wzk.akkalogger.message.{AverageMetricLogMessage, ClearMetricLogMessage, SimpleStringMessage, WriteMetricLogMessage}
 import wzk.akkalogger.util.RemoteRelatedUtil
 
 import scala.concurrent.Await
@@ -80,10 +80,21 @@ class AkkaLoggerClient(private var configFilePath:String = "akkalogger.conf") {
     checkServerAvailable()
     loggerServer ! SimpleStringMessage(myHostName, msg)
   }
+
+  def clearPreviousMetrics(msg:String = ""):Unit = {
+    checkServerAvailable()
+    loggerServer ! ClearMetricLogMessage(msg)
+  }
+
+  def writeMetricToFile(fileName:String):Unit = {
+    checkServerAvailable()
+    loggerServer ! WriteMetricLogMessage(fileName)
+  }
 }
 
 
 object AkkaLoggerClient {
   val processLevelClient = new AkkaLoggerClient()
+  def getProcessLevelClient:AkkaLoggerClient = processLevelClient
 }
 

@@ -1,12 +1,13 @@
 package wzk.akkalogger.server
 
+import java.io.PrintStream
 import java.text.SimpleDateFormat
 
 import akka.actor.Actor.Receive
 import akka.actor.{ActorSystem, Props}
 import akka.event.Logging
 import akka.util.Timeout
-import wzk.akkalogger.message.{AverageMetricLogMessage, SimpleStringMessage}
+import wzk.akkalogger.message.{AverageMetricLogMessage, ClearMetricLogMessage, SimpleStringMessage, WriteMetricLogMessage}
 import wzk.akkalogger.util.RemoteRelatedUtil
 
 import scala.collection.mutable
@@ -44,9 +45,9 @@ object AkkaLoggerServer {
 
   def main(args:Array[String]): Unit = {
     val loggerService = new AkkaLoggerServer
-    println("Server started...")
+    System.err.println("Server started...")
     while (true) {
-      print(">")
+      System.err.print(">")
       val command = scala.io.StdIn.readLine()
       loggerService.sendCommand(command)
     }
@@ -60,18 +61,19 @@ object AkkaLoggerServer {
 class LoggerServerActor extends akka.actor.Actor {
 
   val log = Logging(context.system, this)
-  val metricsNeedAverage:mutable.Map[String, Long] = new mutable.HashMap[String, Long]()
-  var metricLogCount = 0L
+
+  // hash map to store metrics.
+  // key: metric name
+  // value: (metric count, metric value sum)
+  val metrics:mutable.Map[String, (Long, Long)] = new mutable.HashMap[String, (Long, Long)]()
   val simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
 
   def receive = {
     case AverageMetricLogMessage(metrics) => {
-      metricLogCount = metricLogCount + 1
       for (metricInfo <- metrics) {
         val metric=  metricInfo._1
         val value = metricInfo._2
-        metricsNeedAverage(metric) =
-          metricsNeedAverage.getOrElse(metric, 0L) + value
+        logMetric(metric, value)
       }
       printCurrentAverageMetrics()
     }
@@ -79,9 +81,19 @@ class LoggerServerActor extends akka.actor.Actor {
       System.out.println(s"[MSG]${simpleDateFormat.format(new java.util.Date())} from ${senderHostName}: $msg")
       System.out.flush()
     }
+    case ClearMetricLogMessage(msg) => {
+      metrics.clear()
+      System.out.println(s"Metrics cleared. ${msg}.")
+      System.out.flush()
+    }
+    case WriteMetricLogMessage(fileName) => {
+      val printStream = new PrintStream(fileName)
+      printCurrentAverageMetrics(printStream)
+      printStream.close()
+    }
     case "reset" => {
-      metricsNeedAverage.clear()
-      metricLogCount = 0
+      metrics.clear()
+      System.out.flush()
     }
     case "info" => {
       printCurrentAverageMetrics()
@@ -91,22 +103,28 @@ class LoggerServerActor extends akka.actor.Actor {
     }
   }
 
+
+  private def logMetric(metricName:String, metricValue:Long) = {
+    val metricInfo = metrics.getOrElse(metricName, (0L,0L))
+    metrics.put(metricName, (metricInfo._1 + 1, metricInfo._2 + metricValue))
+  }
+
   override def unhandled(message: Any): Unit = {
     super.unhandled(message)
     log.info(s"unhandled message: $message")
   }
 
 
-  private[this] def printCurrentAverageMetrics(): Unit = {
-    println("\n===== Current Average Metrics =====")
-    println(simpleDateFormat.format(new java.util.Date()))
-    println("METRIC\t\tCOUNT\t\tAVERAGE")
-    for ((metric, value) <- metricsNeedAverage) {
-      printf("%s\t\t%d\t\t%.2f\n", metric, metricLogCount, value / metricLogCount.toDouble)
+  private[this] def printCurrentAverageMetrics(printStream: PrintStream = System.out): Unit = {
+    printStream.println("\n===== Metrics Info =====")
+    printStream.println(simpleDateFormat.format(new java.util.Date()))
+    printStream.println("METRIC\tCOUNT\tSUM\tAVERAGE")
+    val metricNames = metrics.keys.toSeq.sorted
+    for (metric <- metricNames) {
+      val (count, sum) = metrics(metric)
+      printStream.println(s"${metric}\t${count}\t${sum}\t${"%.2f".format(sum/count.toDouble)}")
     }
-    println("===== DONE =====")
+    printStream.println("===== END =====")
+    printStream.flush()
   }
-
-
-
 }
