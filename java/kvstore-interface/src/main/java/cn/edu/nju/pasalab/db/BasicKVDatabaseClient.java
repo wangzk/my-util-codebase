@@ -8,6 +8,12 @@ import java.util.Map;
  */
 public abstract class BasicKVDatabaseClient {
 
+    /**
+     *
+     * @param key
+     * @return the value. Return null if the key does not exist.
+     * @throws Exception
+     */
     public abstract byte[] get(byte key[]) throws Exception;
     public abstract void put(byte key[], byte value[]) throws Exception;
 

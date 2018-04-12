@@ -37,13 +37,13 @@ public class TestRedisCluster {
         Set<Integer> keySet = new HashSet<>();
         ArrayList<ArrayList<Tuple<Integer, byte[]>>> data = new ArrayList<>();
         Random random = new Random(System.nanoTime());
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 100; i++) {
             int randomItemNum = Math.abs(random.nextInt() % 500) + 1;
             ArrayList<Tuple<Integer, byte[]>> items = new ArrayList<>(randomItemNum);
             for (int j = 0; j < randomItemNum; j++) {
-                int keyInt = random.nextInt();
+                int keyInt = Math.abs(random.nextInt());
                 while (keySet.contains(keyInt)) {
-                    keyInt = random.nextInt();
+                    keyInt = Math.abs(random.nextInt());
                 }
                 keySet.add(keyInt);
                 byte key[] = intToByteArray(keyInt);
@@ -159,6 +159,16 @@ public class TestRedisCluster {
                 e.printStackTrace();
             }
         });
+        logger.info("Start testing null key fetch");
+        int nullKey = -1;
+        byte[][] nullKeys = new byte[3][];
+        nullKeys[0] = intToByteArray(-1);
+        nullKeys[1] = intToByteArray(-2);
+        nullKeys[2] = intToByteArray(-3);
+        byte[][] results = ShardedRedisClusterClient.getProcessLevelClient().getAll(nullKeys);
+        for (byte[] r : results)
+            logger.info("Null fetch result:" + r);
+
 
        logger.info("Done!");
     }
