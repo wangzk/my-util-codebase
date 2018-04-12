@@ -2,9 +2,11 @@ package cn.edu.nju.pasalab.db.test;
 
 import cn.edu.nju.pasalab.db.BasicKVDatabaseClient;
 import cn.edu.nju.pasalab.db.ShardedRedisClusterClient;
+import cn.edu.nju.pasalab.db.Utils;
 
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Created by wangzhaokang on 4/11/18.
@@ -29,6 +31,8 @@ public class TestRedisCluster {
     }
 
     public static void main(String args[]) throws Exception {
+        Logger logger = Logger.getLogger("Test Redis Cluster");
+        logger.info("Start preparing data...");
         // Prepare random data
         Set<Integer> keySet = new HashSet<>();
         ArrayList<ArrayList<Tuple<Integer, byte[]>>> data = new ArrayList<>();
@@ -51,6 +55,7 @@ public class TestRedisCluster {
             }
             data.add(items);
         }
+        logger.info("Start clearning database...");
         // clear database
         ShardedRedisClusterClient.getProcessLevelClient().clearDB();
         // Check single put & get
@@ -85,8 +90,43 @@ public class TestRedisCluster {
 //                e.printStackTrace();
 //            }
 //        });
-        // Check batch put & get
+//        // Check batch put & get
+//        ShardedRedisClusterClient.getProcessLevelClient().clearDB();
+//        data.parallelStream().forEach(items -> {
+//            try {
+//                BasicKVDatabaseClient client = ShardedRedisClusterClient.getProcessLevelClient();
+//                byte keys[][], values[][];
+//                keys = new byte[items.size()][];
+//                values = new byte[items.size()][];
+//                for (int i = 0; i < items.size(); i++) {
+//                    keys[i] = intToByteArray(items.get(i).x);
+//                    values[i] = items.get(i).y;
+//                }
+//                client.putAll(keys, values);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        });
+//        data.parallelStream().forEach(items -> {
+//            try {
+//                BasicKVDatabaseClient client = ShardedRedisClusterClient.getProcessLevelClient();
+//                byte keys[][], values[][];
+//                keys = new byte[items.size()][];
+//                for (int i = 0; i < items.size(); i++) {
+//                    keys[i] = intToByteArray(items.get(i).x);
+//                }
+//                values = client.getAll(keys);
+//                for (int i = 0; i < items.size(); i++) {
+//                    assert Arrays.equals(values[i], items.get(i).y);
+//                }
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        });
+        logger.info("Start clearning database...");
+        // Check batch put & get with limited batch size
         ShardedRedisClusterClient.getProcessLevelClient().clearDB();
+        logger.info("Start batch inserting...");
         data.parallelStream().forEach(items -> {
             try {
                 BasicKVDatabaseClient client = ShardedRedisClusterClient.getProcessLevelClient();
@@ -97,11 +137,12 @@ public class TestRedisCluster {
                     keys[i] = intToByteArray(items.get(i).x);
                     values[i] = items.get(i).y;
                 }
-                client.putAll(keys, values);
+                Utils.batchInput(client, keys, values, 20);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
+        logger.info("Start batch fetching...");
         data.parallelStream().forEach(items -> {
             try {
                 BasicKVDatabaseClient client = ShardedRedisClusterClient.getProcessLevelClient();
@@ -118,7 +159,8 @@ public class TestRedisCluster {
                 e.printStackTrace();
             }
         });
-        System.out.println("Done!");
+
+       logger.info("Done!");
     }
 
     static class Tuple<X, Y> {
