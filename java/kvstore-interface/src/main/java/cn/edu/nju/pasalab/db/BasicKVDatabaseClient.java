@@ -11,7 +11,7 @@ public abstract class BasicKVDatabaseClient {
 
 
     /**
-     *
+     * thread-safe
      * @param key
      * @return the value. Return null if the key does not exist.
      * @throws Exception
@@ -21,6 +21,7 @@ public abstract class BasicKVDatabaseClient {
 
     /**
      * Get the values of a group of keys
+     * thread-safe
      * @param keys
      * @return the values of the keys
      * @throws Exception
@@ -35,6 +36,7 @@ public abstract class BasicKVDatabaseClient {
 
     /**
      * Get the values of a group of keys
+     * thread-safe
      * @param keys
      * @param from the start index of keys
      * @param to the end index of keys
@@ -54,6 +56,7 @@ public abstract class BasicKVDatabaseClient {
 
     /**
      * Set the key-value pairs in batch
+     * thread-safe
      * @param keys
      * @param values
      * @throws Exception
@@ -67,6 +70,7 @@ public abstract class BasicKVDatabaseClient {
 
     /**
      * Set the key-value pairs in batch
+     * thread-safe
      * @param keys
      * @param values
      * @param from the start index
