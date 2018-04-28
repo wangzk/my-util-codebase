@@ -1,3 +1,0 @@
-redis.connection.pool.size=4
-redis.db.index=2
-redis.hosts.list=slave001,slave002,slave003

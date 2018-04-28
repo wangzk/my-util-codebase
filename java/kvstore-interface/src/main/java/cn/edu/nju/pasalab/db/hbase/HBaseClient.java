@@ -1,16 +1,12 @@
 package cn.edu.nju.pasalab.db.hbase;
 
-import cn.edu.nju.pasalab.conf.ProcessLevelConf;
 import cn.edu.nju.pasalab.db.BasicKVDatabaseClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.Strings;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Map;
 
 import java.util.Properties;
 import java.util.logging.Logger;
@@ -28,6 +24,8 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     public static final String DEFAULT_COLUMN_NAME = "content";
     public static final String CONF_NUM_REGION = "hbase.num.region";
     public static final String DEFAULT_NUM_REGION = "16";
+    public static final String CONF_ZOOKEEPER_QUORUM  = "hbase.zookeeper.quorum"; // separated by comma
+    public static final String DEFAULT_ZOOKEEPER_QUORUM = "localhost";
 
 
 
@@ -37,6 +35,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     private byte[] columnFamily;
     private byte[] columnName;
     private int numRegion;
+    private String zookeeperQuorum;
     private HBaseOperation hBaseOperation;
     private Connection hbaseConnection;
 
@@ -135,6 +134,9 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         this.columnName = Bytes.toBytes(columnNameString);
         String numRegionString = conf.getProperty(CONF_NUM_REGION, DEFAULT_NUM_REGION);
         this.numRegion = Integer.parseInt(numRegionString);
+        conf.setProperty(CONF_NUM_REGION, Integer.toString(this.numRegion)); // further used by HBaseOperation
+        this.zookeeperQuorum = conf.getProperty(CONF_ZOOKEEPER_QUORUM, DEFAULT_ZOOKEEPER_QUORUM);
+        conf.setProperty(CONF_ZOOKEEPER_QUORUM, this.zookeeperQuorum); // further used by HBaseOperation
     }
 
     /**

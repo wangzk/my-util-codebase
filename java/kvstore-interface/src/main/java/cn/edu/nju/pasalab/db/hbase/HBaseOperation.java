@@ -1,8 +1,9 @@
 package cn.edu.nju.pasalab.db.hbase;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
-import cn.edu.nju.pasalab.conf.ProcessLevelConf;
 import cn.edu.nju.pasalab.db.util.CoderAndDecoder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -105,7 +106,12 @@ public final class HBaseOperation {
     }
 
     public static void main(String args[]) throws Exception {
-        HBaseOperation operation = new HBaseOperation(ProcessLevelConf.getPasaConf());
+        Properties conf = new Properties();
+        String confFile = args[0];
+        InputStream inputStream = new FileInputStream(confFile);
+        conf.load(inputStream);
+        inputStream.close();
+        HBaseOperation operation = new HBaseOperation(conf);
         operation.deleteTable("dblp");
         operation.createTable("dblp", Bytes.toBytes("record"), 64);
         operation.close();

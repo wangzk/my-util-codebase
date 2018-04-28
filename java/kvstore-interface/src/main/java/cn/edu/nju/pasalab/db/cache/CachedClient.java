@@ -30,7 +30,7 @@ public class CachedClient extends BasicKVDatabaseClient {
     static public final String CONF_CACHE_EXPIRE_NUM_THREADS = "cache.expire.num.thread";
     static public final String DEFAULT_CACHE_EXPIRE_NUM_THREADS = "4";
     static public final String CONF_HMAP_CONCURRENCY = "cache.hmap.concurrency";
-    static public final String DEFAULT_HMAP_CONCURRENCY = Integer.toString(Runtime.getRuntime().availableProcessors());
+    static public final String DEFAULT_HMAP_CONCURRENCY = "4";
     static public final String CONF_DB_BACKEND_CLASS_NAME = "cache.db.backend.class.name"; // required, no default!
 
     private static Thread cacheStatsReportThread = null;
@@ -63,7 +63,8 @@ public class CachedClient extends BasicKVDatabaseClient {
         byte[] result = cache.get(key);
         if (result == null) {
             result = db.get(key);
-            cache.put(key, result);
+            if (result != null)
+                cache.put(key, result);
         } else {
             hitCount++;
         }
@@ -93,7 +94,8 @@ public class CachedClient extends BasicKVDatabaseClient {
         for (int i = 0; i < queryKeysIDs.size(); i++) {
             int kID = queryKeysIDs.getInt(i);
             results[kID] = queryResults[i];
-            cache.put(queryKeys[i], queryResults[i]);
+            if (queryResults[i] != null)
+                cache.put(queryKeys[i], queryResults[i]);
         }
         return results;
     }

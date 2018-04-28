@@ -9,6 +9,11 @@
     <version>1.1-SNAPSHOT</version>
     <dependencies>
         <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>16.0</version>
+        </dependency>
+        <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
             <version>2.9.0</version>
@@ -51,6 +56,7 @@
                 <version>3.1.1</version>
                 <configuration>
                     <!-- put your configurations here -->
+
                 </configuration>
                 <executions>
                     <execution>
@@ -58,6 +64,47 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <filters>
+                                <filter>
+                                    <artifact>junit:junit</artifact>
+                                    <includes>
+                                        <include>junit/framework/**</include>
+                                        <include>org/junit/**</include>
+                                    </includes>
+                                    <excludes>
+                                        <exclude>org/junit/experimental/**</exclude>
+                                        <exclude>org/junit/runners/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+
+                            <!-- 如果为true则有一个普通jar包和一个-shade.jar包，如果为false合包去掉原来包的依赖关系，shade过的jar作为项目默认的包-->
+                            <shadedArtifactAttached>false</shadedArtifactAttached>
+                            <!-- When true, dependencies are kept in the pom but with scope 'provided'; when false, the dependency is removed. -->
+                            <keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
+                            <!-- When true, transitive deps of removed dependencies are promoted to direct dependencies. This should allow the drop in replacement of the removed deps with the new shaded jar and everything should still work. -->
+                            <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
+                            <!--jar包的pom.xml里去掉了dependency(META-INF/maven/$groupId/$artifactId/pom.xml)，并创建了一个dependency-reduced-pom.xml在根目录-->
+                            <createDependencyReducedPom>true</createDependencyReducedPom>
+                            <!-- 生成source包，如果依赖的包没有source会报错-->
+                            <createSourcesJar>false</createSourcesJar>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.google.common</pattern>
+                                    <shadedPattern>shaded.com.google.common</shadedPattern>
+                                </relocation>
+                            </relocations>
+
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
