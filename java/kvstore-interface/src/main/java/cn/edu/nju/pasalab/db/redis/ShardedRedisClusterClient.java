@@ -24,7 +24,7 @@ public final class ShardedRedisClusterClient extends BasicKVDatabaseClient {
     public static final String DEFAULT_HOSTS_LIST = "localhost";
     public static final String CONF_REDIS_PORT = "redis.port";
     public static final String DEFAULT_REDIS_PORT = "6379";
-    public static final String CONF_TIME_OUT = "redis.timeout"; //  in second
+    public static final String CONF_TIME_OUT = "redis.timeout.in.sec"; //  in second
     public static final String DEFAULT_TIME_OUT = "36000";
 
 
