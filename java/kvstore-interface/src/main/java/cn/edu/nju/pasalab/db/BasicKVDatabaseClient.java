@@ -2,11 +2,13 @@ package cn.edu.nju.pasalab.db;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * The abstract class for a simple key-value database client.
  */
 public abstract class BasicKVDatabaseClient {
+
 
     /**
      *
@@ -91,9 +93,10 @@ public abstract class BasicKVDatabaseClient {
 
     /**
      * Connect to the underlying database
+     * @param conf Database connection-related configurations
      * @throws Exception database connection exception
      */
-    public abstract void connect() throws Exception;
+    public abstract void connect(Properties conf) throws Exception;
 
     /**
      * Clear the contents in the database

@@ -1,9 +1,9 @@
-package cn.edu.nju.pasalab.db;
+package cn.edu.nju.pasalab.db.redis;
 
-import cn.edu.nju.pasalab.conf.ProcessLevelConf;
+import cn.edu.nju.pasalab.db.BasicKVDatabaseClient;
 import redis.clients.jedis.*;
 
-import java.util.ArrayList;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -17,52 +17,24 @@ import java.util.stream.Collectors;
 public final class ShardedRedisClusterClient extends BasicKVDatabaseClient {
 
     public static final String CONF_POOL_SIZE = "redis.connection.pool.size";
-    public static final String CONF_DB_ID = "redis.db.index";
-    public static final String CONF_HOSTS_LIST = "redis.hosts.list";
-    public static final int DEFAULT_TIME_OUT_IN_SEC = 36000;
-    public static final int DEFAULT_REDIS_PORT = 6379;
+    public static final String DEFAULT_POOL_SIZE = "2";
+    public static final String CONF_DB_ID = "redis.db.index"; // integer
+    public static final String DEFAULT_DB_ID = "0";
+    public static final String CONF_HOSTS_LIST = "redis.hosts.list"; // separated by comma
+    public static final String DEFAULT_HOSTS_LIST = "localhost";
+    public static final String CONF_REDIS_PORT = "redis.port";
+    public static final String DEFAULT_REDIS_PORT = "6379";
+    public static final String CONF_TIME_OUT = "redis.timeout"; //  in second
+    public static final String DEFAULT_TIME_OUT = "36000";
 
 
     private List<String> hosts;
     private int databaseID;
     private int poolSize = 4;
+    private int redisPort;
+    private int redisTimeout;
     private ShardedJedisPool pool;
     private Logger logger = Logger.getLogger(ShardedRedisClusterClient.class.getName());
-
-    private static ShardedRedisClusterClient processLevelSingletonClient;
-
-    /**
-     * Get a thread-safe process-level Redis client.
-     * @return The process-level thread-safe client. This client will be shared among all threads in the JVM. The returned client is already connected to the database.
-     * @throws Exception
-     */
-    public static ShardedRedisClusterClient getProcessLevelClient() throws Exception{
-        if (processLevelSingletonClient != null) return processLevelSingletonClient;
-        else {
-            initProcessLevelClient();
-            return processLevelSingletonClient;
-        }
-    }
-
-    private static synchronized void initProcessLevelClient() throws Exception {
-        if (processLevelSingletonClient == null) {
-            Properties pasaProperties = ProcessLevelConf.getPasaConf();
-            String hostsString = pasaProperties.getProperty(CONF_HOSTS_LIST, "localhost");
-            int dbID = Integer.parseInt(pasaProperties.getProperty(CONF_DB_ID, "0"));
-            int poolSize = Integer.parseInt(pasaProperties.getProperty(CONF_POOL_SIZE, "4"));
-            List<String> hosts = Arrays.asList(hostsString.split(","));
-            processLevelSingletonClient = new ShardedRedisClusterClient(hosts, dbID, poolSize);
-            // connect
-            processLevelSingletonClient.connect();
-        }
-    }
-
-    public ShardedRedisClusterClient(List<String> redisHosts, int databaseID, int poolSize) {
-        this.hosts = new ArrayList<>();
-        this.hosts.addAll(redisHosts);
-        this.databaseID = databaseID;
-        this.poolSize = poolSize;
-    }
 
 
     @Override
@@ -119,16 +91,37 @@ public final class ShardedRedisClusterClient extends BasicKVDatabaseClient {
         logger.info("Connection pool closed.");
     }
 
+    private void loadConfiguration(Properties conf) throws ParseException {
+        logger.info("Get configuration: " + conf);
+        // hosts list
+        String hostsString = conf.getProperty(CONF_HOSTS_LIST, DEFAULT_HOSTS_LIST);
+        this.hosts = Arrays.asList(hostsString.split(","));
+        // database id
+        String databaseIDString = conf.getProperty(CONF_DB_ID, DEFAULT_DB_ID);
+        this.databaseID = Integer.parseInt(databaseIDString);
+        // pool size
+        String poolSizeString = conf.getProperty(CONF_POOL_SIZE, DEFAULT_POOL_SIZE);
+        this.poolSize = Integer.parseInt(poolSizeString);
+        // redis port
+        String portString = conf.getProperty(CONF_REDIS_PORT, DEFAULT_REDIS_PORT);
+        this.redisPort = Integer.parseInt(portString);
+        // timeout
+        String timeoutString = conf.getProperty(CONF_TIME_OUT, DEFAULT_TIME_OUT);
+        this.redisTimeout = Integer.parseInt(timeoutString);
+    }
+
     @Override
-    public void connect() throws Exception {
+    public void connect(Properties configuration) throws Exception {
+        logger.info("Start loading configurations...");
+        loadConfiguration(configuration);
         logger.info("Start connecting...");
         // Prepare Jedis shards
         List<JedisShardInfo> shards =
             hosts.stream().map(host -> {
-                String hostURI = String.format("redis://%s:%d/%d", host, DEFAULT_REDIS_PORT, databaseID);
+                String hostURI = String.format("redis://%s:%d/%d", host, redisPort, databaseID);
                 JedisShardInfo si = new JedisShardInfo(hostURI);
                 si.setPassword(null);
-                si.setConnectionTimeout(DEFAULT_TIME_OUT_IN_SEC);
+                si.setConnectionTimeout(redisTimeout);
                 return si;
             }).collect(Collectors.toList());
         logger.info("Shards:" + shards);
@@ -143,7 +136,7 @@ public final class ShardedRedisClusterClient extends BasicKVDatabaseClient {
     public void clearDB() throws Exception {
        List<CompletableFuture> futures = hosts.stream().map(host -> {
            return CompletableFuture.runAsync(() -> {
-               Jedis jedis = new Jedis(host, DEFAULT_REDIS_PORT, DEFAULT_TIME_OUT_IN_SEC);
+               Jedis jedis = new Jedis(host, redisPort, redisTimeout);
                jedis.select(databaseID);
                jedis.flushDB();
                jedis.close();
