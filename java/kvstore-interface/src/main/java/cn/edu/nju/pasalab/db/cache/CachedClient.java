@@ -118,6 +118,7 @@ public class CachedClient extends BasicKVDatabaseClient {
         cache.clear();
         cache.close();
         db.close();
+        cacheStatsReportThread.interrupt();
     }
 
     /**
