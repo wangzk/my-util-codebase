@@ -19,8 +19,8 @@ import java.util.logging.Logger;
  */
 public class CachedClient extends BasicKVDatabaseClient {
 
-    static public final String CONF_CACHE_CAPACITY = "cache.capacity.in.gb"; // in Gbytes
-    static public final String DEFAULT_CACHE_CAPACITY = "1"; // in Gbytes
+    static public final String CONF_CACHE_CAPACITY = "cache.capacity.in.byte"; // in byte
+    static public final String DEFAULT_CACHE_CAPACITY = "8,388,608"; // 8 MB by default
     static public final String CONF_CACHE_STATS_FILE_PATH = "cache.stats.file.path"; // store cache stats
     static public final String DEFAULT_CACHE_STATS_FILE_PATH = "/tmp/cache.stats";
     static public final String CONF_CACHE_COMPACT_FACTOR = "cache.compact.factor"; // 0-1
@@ -39,7 +39,7 @@ public class CachedClient extends BasicKVDatabaseClient {
     private BasicKVDatabaseClient db;
     private HTreeMap<byte[], byte[]> cache;
     private ScheduledExecutorService expireExecutorService;
-    private long cacheCapacityInGB = 1;
+    private long cacheCapacityInBytes = 1;
     private String statsFilePath;
     private float compactFactor;
     private long expirePeriod;
@@ -132,7 +132,7 @@ public class CachedClient extends BasicKVDatabaseClient {
 
     private void loadConfigurations(Properties conf) {
         String capacityString = conf.getProperty(CONF_CACHE_CAPACITY, DEFAULT_CACHE_CAPACITY);
-        this.cacheCapacityInGB = Integer.valueOf(capacityString);
+        this.cacheCapacityInBytes = Long.valueOf(capacityString);
         this.statsFilePath = conf.getProperty(CONF_CACHE_STATS_FILE_PATH, DEFAULT_CACHE_STATS_FILE_PATH);
         this.compactFactor = Float.valueOf(conf.getProperty(CONF_CACHE_COMPACT_FACTOR, DEFAULT_CACHE_COMPACT_FACTOR));
         this.expirePeriod = Long.valueOf(conf.getProperty(CONF_CACHE_EXPIRE_PERIOD, DEFAULT_CACHE_EXPIRE_PERIOD));
@@ -162,7 +162,7 @@ public class CachedClient extends BasicKVDatabaseClient {
         cache = DBMaker.memoryShardedHashMap(this.hmapConcurrency)
                 .keySerializer(Serializer.BYTE_ARRAY)
                 .valueSerializer(Serializer.BYTE_ARRAY)
-                .expireMaxSize(cacheCapacityInGB * 1024L * 1024L * 1024L)
+                .expireMaxSize(cacheCapacityInBytes)
                 .expireAfterGet()
                 .expireCompactThreshold(this.compactFactor)
                 .expireExecutor(expireExecutorService)
