@@ -12,6 +12,7 @@ import java.io.PrintWriter;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 /**
@@ -46,8 +47,8 @@ public class CachedClient extends BasicKVDatabaseClient {
     private int expireNumThread;
     private int hmapConcurrency;
     private String dbClassName;
-    private long queryCount = 0L;
-    private long hitCount = 0L;
+    private AtomicLong queryCount = new AtomicLong(0L);
+    private AtomicLong hitCount = new AtomicLong(0L);
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
 
@@ -59,14 +60,14 @@ public class CachedClient extends BasicKVDatabaseClient {
     @Override
     public byte[] get(byte[] key) throws Exception {
         assert cache != null;
-        queryCount++;
+        this.queryCount.getAndAdd(1L);
         byte[] result = cache.get(key);
         if (result == null) {
             result = db.get(key);
             if (result != null)
                 cache.put(key, result);
         } else {
-            hitCount++;
+            this.hitCount.getAndAdd(1L);
         }
         return result;
     }
@@ -75,17 +76,21 @@ public class CachedClient extends BasicKVDatabaseClient {
     public byte[][] getAll(byte keys[][]) throws Exception{
         byte[][] results = new byte[keys.length][];
         IntArrayList queryKeysIDs = new IntArrayList();
+        long localQueryCount = 0L;
+        long localHitCount = 0L;
 
         for (int i = 0; i < keys.length; i++) {
-            queryCount++;
+            localQueryCount++;
             byte[] result = cache.get(keys[i]);
             if (result == null) {
                 queryKeysIDs.add(i);
             } else {
                 results[i] = result;
-                hitCount++;
+                localHitCount++;
             }
         }
+        this.queryCount.addAndGet(localQueryCount);
+        this.hitCount.addAndGet(localHitCount);
         byte[][] queryKeys = new byte[queryKeysIDs.size()][];
         for (int i = 0; i < queryKeysIDs.size(); i++) {
             queryKeys[i] = keys[queryKeysIDs.getInt(i)];
@@ -140,6 +145,7 @@ public class CachedClient extends BasicKVDatabaseClient {
         this.hmapConcurrency = Integer.valueOf(conf.getProperty(CONF_HMAP_CONCURRENCY, DEFAULT_HMAP_CONCURRENCY));
         this.dbClassName = conf.getProperty(CONF_DB_BACKEND_CLASS_NAME);
         logger.info("Get configurations:" + conf);
+        logger.info("Set cache capacity: " + this.cacheCapacityInBytes + " bytes");
     }
 
     /**
@@ -192,8 +198,8 @@ public class CachedClient extends BasicKVDatabaseClient {
         private void writeStatsToFile() {
             try {
                 PrintWriter writer = new PrintWriter(new File(statsFilePath));
-                long missCount = queryCount - hitCount;
-                writer.println(String.format("CacheStats{hitCount=%d, missCount=%d, }", hitCount, missCount));
+                long missCount = queryCount.get() - hitCount.get();
+                writer.println(String.format("CacheStats{hitCount=%d, missCount=%d, }", hitCount.get(), missCount));
                 writer.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
