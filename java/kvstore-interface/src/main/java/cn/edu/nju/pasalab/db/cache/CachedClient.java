@@ -1,17 +1,15 @@
 package cn.edu.nju.pasalab.db.cache;
 
 import cn.edu.nju.pasalab.db.BasicKVDatabaseClient;
-import org.mapdb.DBMaker;
-import org.mapdb.HTreeMap;
-import org.mapdb.Serializer;
+import org.caffinitas.ohc.*;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
 import java.util.Properties;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
@@ -24,28 +22,21 @@ public class CachedClient extends BasicKVDatabaseClient {
     static public final String DEFAULT_CACHE_CAPACITY = "8,388,608"; // 8 MB by default
     static public final String CONF_CACHE_STATS_FILE_PATH = "cache.stats.file.path"; // store cache stats
     static public final String DEFAULT_CACHE_STATS_FILE_PATH = "/tmp/cache.stats";
-    static public final String CONF_CACHE_COMPACT_FACTOR = "cache.compact.factor"; // 0-1
-    static public final String DEFAULT_CACHE_COMPACT_FACTOR = "0.2";
-    static public final String CONF_CACHE_EXPIRE_PERIOD = "cache.expire.period.in.sec"; // in second
-    static public final String DEFAULT_CACHE_EXPIRE_PERIOD = "10";
-    static public final String CONF_CACHE_EXPIRE_NUM_THREADS = "cache.expire.num.thread";
-    static public final String DEFAULT_CACHE_EXPIRE_NUM_THREADS = "4";
-    static public final String CONF_HMAP_CONCURRENCY = "cache.hmap.concurrency";
-    static public final String DEFAULT_HMAP_CONCURRENCY = "4";
+    static public final String CONF_CACHE_CONCURRENCY = "cache.concurrency";
+    static public final String DEFAULT_CACHE_CONCURRENCY = "4";
+    static public final String CONF_CACHE_HASHTABLE_SIZE_PER_SEGMENT = "cache.hashtable.size.per.segment";
+    static public final String DEFAULT_CACHE_HASHTABLE_SIZE_PER_SEGMENT = "8192";
     static public final String CONF_DB_BACKEND_CLASS_NAME = "cache.db.backend.class.name"; // required, no default!
 
     private static Thread cacheStatsReportThread = null;
 
 
     private BasicKVDatabaseClient db;
-    private HTreeMap<byte[], byte[]> cache;
-    private ScheduledExecutorService expireExecutorService;
+    private OHCache<byte[], byte[]> cache;
     private long cacheCapacityInBytes = 1;
     private String statsFilePath;
-    private float compactFactor;
-    private long expirePeriod;
-    private int expireNumThread;
-    private int hmapConcurrency;
+    private int concurrency; // = segment_count in the OHC cache.
+    private int hashTableSizePerSegment;
     private String dbClassName;
     private AtomicLong queryCount = new AtomicLong(0L);
     private AtomicLong hitCount = new AtomicLong(0L);
@@ -64,8 +55,9 @@ public class CachedClient extends BasicKVDatabaseClient {
         byte[] result = cache.get(key);
         if (result == null) {
             result = db.get(key);
-            if (result != null)
+            if (result != null) {
                 cache.put(key, result);
+            }
         } else {
             this.hitCount.getAndAdd(1L);
         }
@@ -99,8 +91,10 @@ public class CachedClient extends BasicKVDatabaseClient {
         for (int i = 0; i < queryKeysIDs.size(); i++) {
             int kID = queryKeysIDs.getInt(i);
             results[kID] = queryResults[i];
-            if (queryResults[i] != null)
+            if (queryResults[i] != null) {
                 cache.put(queryKeys[i], queryResults[i]);
+            }
+
         }
         return results;
     }
@@ -135,17 +129,22 @@ public class CachedClient extends BasicKVDatabaseClient {
         db.clearDB();
     }
 
-    private void loadConfigurations(Properties conf) {
+    private void loadConfigurations(Properties conf) throws IOException {
         String capacityString = conf.getProperty(CONF_CACHE_CAPACITY, DEFAULT_CACHE_CAPACITY);
         this.cacheCapacityInBytes = Long.valueOf(capacityString);
         this.statsFilePath = conf.getProperty(CONF_CACHE_STATS_FILE_PATH, DEFAULT_CACHE_STATS_FILE_PATH);
-        this.compactFactor = Float.valueOf(conf.getProperty(CONF_CACHE_COMPACT_FACTOR, DEFAULT_CACHE_COMPACT_FACTOR));
-        this.expirePeriod = Long.valueOf(conf.getProperty(CONF_CACHE_EXPIRE_PERIOD, DEFAULT_CACHE_EXPIRE_PERIOD));
-        this.expireNumThread = Integer.valueOf(conf.getProperty(CONF_CACHE_EXPIRE_NUM_THREADS, DEFAULT_CACHE_EXPIRE_NUM_THREADS));
-        this.hmapConcurrency = Integer.valueOf(conf.getProperty(CONF_HMAP_CONCURRENCY, DEFAULT_HMAP_CONCURRENCY));
+        this.concurrency = Integer.parseInt(conf.getProperty(CONF_CACHE_CONCURRENCY, DEFAULT_CACHE_CONCURRENCY));
+        this.hashTableSizePerSegment = Integer.parseInt(
+                conf.getProperty(CONF_CACHE_HASHTABLE_SIZE_PER_SEGMENT,
+                        DEFAULT_CACHE_HASHTABLE_SIZE_PER_SEGMENT));
         this.dbClassName = conf.getProperty(CONF_DB_BACKEND_CLASS_NAME);
-        logger.info("Get configurations:" + conf);
-        logger.info("Set cache capacity: " + this.cacheCapacityInBytes + " bytes");
+        long totalHashTableSize = hashTableSizePerSegment * concurrency * 8; // according to the equation
+        String configurationInfo = String.format("Get configurations: %s.\n"
+                + "Set cache capacity: %d bytes.\n"
+                + "# Segments: %d.\n"
+                + "Total hash table size: %d bytes.",
+                conf, this.cacheCapacityInBytes, this.concurrency, totalHashTableSize);
+        logger.info(configurationInfo);
     }
 
     /**
@@ -162,26 +161,41 @@ public class CachedClient extends BasicKVDatabaseClient {
         Class dbClass = Class.forName(dbClassName);
         this.db = (BasicKVDatabaseClient) dbClass.newInstance();
         db.connect(conf);
-        // Create cache
-        expireExecutorService = Executors.newScheduledThreadPool(this.expireNumThread);
         // create the cache
-        cache = DBMaker.memoryShardedHashMap(this.hmapConcurrency)
-                .keySerializer(Serializer.BYTE_ARRAY)
-                .valueSerializer(Serializer.BYTE_ARRAY)
-                .expireMaxSize(cacheCapacityInBytes)
-                .expireAfterGet()
-                .expireCompactThreshold(this.compactFactor)
-                .expireExecutor(expireExecutorService)
-                .expireExecutorPeriod(this.expirePeriod)
-                .create();
-
-        cacheStatsReportThread = new Thread(new CacheStatsReportRunnable(expirePeriod));
+        OHCacheBuilder<byte[], byte[]> builder = OHCacheBuilder.<byte[], byte[]>newBuilder()
+                .keySerializer(new ByteArraySerializer())
+                .valueSerializer(new ByteArraySerializer())
+                .segmentCount(concurrency)
+                .hashTableSize(hashTableSizePerSegment)
+                .capacity(cacheCapacityInBytes)
+                .throwOOME(true);
+        this.cache = builder.build();
+        cacheStatsReportThread = new Thread(new CacheStatsReportRunnable(2));
         cacheStatsReportThread.setDaemon(true);
         cacheStatsReportThread.setName("Cache Stats Reporter");
         cacheStatsReportThread.start();
 
     }
 
+    private class ByteArraySerializer implements CacheSerializer<byte[]> {
+
+        @Override
+        public void serialize(byte[] bytes, ByteBuffer byteBuffer) {
+            byteBuffer.put(bytes);
+        }
+
+        @Override
+        public byte[] deserialize(ByteBuffer byteBuffer) {
+            byte[] array = new byte[byteBuffer.remaining()];
+            byteBuffer.get(array, 0, array.length);
+            return array;
+        }
+
+        @Override
+        public int serializedSize(byte[] bytes) {
+            return bytes.length;
+        }
+    }
 
 
     private class CacheStatsReportRunnable implements Runnable {
