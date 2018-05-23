@@ -1,6 +1,7 @@
 package cn.edu.nju.pasalab.db.hbase;
 
 import cn.edu.nju.pasalab.db.BasicKVDatabaseClient;
+import com.google.common.hash.Hashing;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
@@ -8,6 +9,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import java.util.ArrayList;
 
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.logging.Logger;
 
@@ -45,6 +47,16 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         return hbaseConnection != null;
     }
 
+    private byte[] getHashedKey(byte[] key) {
+        byte hashValue = (byte)Arrays.hashCode(key);
+        byte[] newHashKey = new byte[key.length + 1];
+        newHashKey[0] = hashValue;
+        for (int i = 0; i < key.length; i++) {
+            newHashKey[i + 1] = key[i];
+        }
+        return newHashKey;
+    }
+
     /**
      * @param key
      * @return the value. Return null if the key does not exist.
@@ -53,8 +65,9 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     @Override
     public byte[] get(byte[] key) throws Exception {
         assert isConnectionEstablished();
+        byte[] actualKey = getHashedKey(key);
         Table table = hbaseConnection.getTable(dataTableName);
-        Get get = new Get(key);
+        Get get = new Get(actualKey);
         get.addColumn(this.columnFamily, this.columnName);
         Result result = table.get(get);
         byte rawResult[] = result.getValue(this.columnFamily, this.columnName);
@@ -74,7 +87,8 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         Table table = hbaseConnection.getTable(this.dataTableName);
         ArrayList<Get> gets = new ArrayList<>(keys.length);
         for (int i = 0; i < keys.length; i++) {
-            Get get = new Get(keys[i]);
+            byte[] actualKey = getHashedKey(keys[i]);
+            Get get = new Get(actualKey);
             gets.add(get);
         }
         Result[] hbaseResults = table.get(gets);
@@ -92,7 +106,8 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     public void put(byte[] key, byte[] value) throws Exception {
         assert isConnectionEstablished();
         Table table = hbaseConnection.getTable(dataTableName);
-        Put put = new Put(key);
+        byte[] actualKey = getHashedKey(key);
+        Put put = new Put(actualKey);
         put.addColumn(this.columnFamily,this.columnName, value);
         table.put(put);
         table.close();
@@ -108,7 +123,8 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     public void putAll(byte keys[][], byte values[][]) throws Exception {
         BufferedMutator mutator = hbaseConnection.getBufferedMutator(dataTableName);
         for (int i = 0; i < keys.length; i++) {
-            Put put = new Put(keys[i]);
+            byte[] actualKey = getHashedKey(keys[i]);
+            Put put = new Put(actualKey);
             put.addColumn(this.columnFamily, this.columnName, values[i]);
             mutator.mutate(put);
         }
