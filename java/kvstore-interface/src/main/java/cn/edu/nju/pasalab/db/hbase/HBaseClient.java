@@ -1,7 +1,6 @@
 package cn.edu.nju.pasalab.db.hbase;
 
 import cn.edu.nju.pasalab.db.BasicKVDatabaseClient;
-import com.google.common.hash.Hashing;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
@@ -28,6 +27,8 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     public static final String DEFAULT_NUM_REGION = "16";
     public static final String CONF_ZOOKEEPER_QUORUM  = "hbase.zookeeper.quorum"; // separated by comma
     public static final String DEFAULT_ZOOKEEPER_QUORUM = "localhost";
+    public static final String CONF_USE_HASHED_KEY = "hbase.use.hashed.key";
+    public static final String DEFAULT_USE_HASHED_KEY = "false";
 
 
 
@@ -38,6 +39,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     private byte[] columnName;
     private int numRegion;
     private String zookeeperQuorum;
+    private boolean useHashedKey;
     private HBaseOperation hBaseOperation;
     private Connection hbaseConnection;
 
@@ -47,14 +49,20 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         return hbaseConnection != null;
     }
 
-    private byte[] getHashedKey(byte[] key) {
-        byte hashValue = (byte)Arrays.hashCode(key);
-        byte[] newHashKey = new byte[key.length + 1];
-        newHashKey[0] = hashValue;
-        for (int i = 0; i < key.length; i++) {
-            newHashKey[i + 1] = key[i];
+    private byte[] transformKey(byte[] key) {
+        if (!useHashedKey) {
+            return key;
+        } else {
+            // Append a byte of hash value to the head of the key to get a new key
+            // New key: [ HashValue(1 byte) | original key ]
+            byte hashValue = (byte) Arrays.hashCode(key);
+            byte[] newHashKey = new byte[key.length + 1];
+            newHashKey[0] = hashValue;
+            for (int i = 0; i < key.length; i++) {
+                newHashKey[i + 1] = key[i];
+            }
+            return newHashKey;
         }
-        return newHashKey;
     }
 
     /**
@@ -65,7 +73,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     @Override
     public byte[] get(byte[] key) throws Exception {
         assert isConnectionEstablished();
-        byte[] actualKey = getHashedKey(key);
+        byte[] actualKey = transformKey(key);
         Table table = hbaseConnection.getTable(dataTableName);
         Get get = new Get(actualKey);
         get.addColumn(this.columnFamily, this.columnName);
@@ -87,7 +95,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         Table table = hbaseConnection.getTable(this.dataTableName);
         ArrayList<Get> gets = new ArrayList<>(keys.length);
         for (int i = 0; i < keys.length; i++) {
-            byte[] actualKey = getHashedKey(keys[i]);
+            byte[] actualKey = transformKey(keys[i]);
             Get get = new Get(actualKey);
             gets.add(get);
         }
@@ -106,7 +114,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     public void put(byte[] key, byte[] value) throws Exception {
         assert isConnectionEstablished();
         Table table = hbaseConnection.getTable(dataTableName);
-        byte[] actualKey = getHashedKey(key);
+        byte[] actualKey = transformKey(key);
         Put put = new Put(actualKey);
         put.addColumn(this.columnFamily,this.columnName, value);
         table.put(put);
@@ -123,7 +131,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     public void putAll(byte keys[][], byte values[][]) throws Exception {
         BufferedMutator mutator = hbaseConnection.getBufferedMutator(dataTableName);
         for (int i = 0; i < keys.length; i++) {
-            byte[] actualKey = getHashedKey(keys[i]);
+            byte[] actualKey = transformKey(keys[i]);
             Put put = new Put(actualKey);
             put.addColumn(this.columnFamily, this.columnName, values[i]);
             mutator.mutate(put);
@@ -150,6 +158,8 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         this.columnName = Bytes.toBytes(columnNameString);
         String numRegionString = conf.getProperty(CONF_NUM_REGION, DEFAULT_NUM_REGION);
         this.numRegion = Integer.parseInt(numRegionString);
+        String useHashedKeyString = conf.getProperty(CONF_USE_HASHED_KEY, DEFAULT_USE_HASHED_KEY);
+        this.useHashedKey = Boolean.parseBoolean(useHashedKeyString);
         conf.setProperty(CONF_NUM_REGION, Integer.toString(this.numRegion)); // further used by HBaseOperation
         this.zookeeperQuorum = conf.getProperty(CONF_ZOOKEEPER_QUORUM, DEFAULT_ZOOKEEPER_QUORUM);
         conf.setProperty(CONF_ZOOKEEPER_QUORUM, this.zookeeperQuorum); // further used by HBaseOperation
