@@ -36,6 +36,7 @@ public final class HBaseOperation {
         loadConfigurations(hbaseConf);
         Configuration conf = HBaseConfiguration.create();
         conf.set("hbase.zookeeper.quorum", hbaseZookeeperQuorum);
+        conf.set("hbase.client.keyvalue.maxsize", "0"); // disable the maxsize check
         hConf = conf;
         connection = ConnectionFactory.createConnection(conf);
         admin = connection.getAdmin();
