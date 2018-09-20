@@ -6,7 +6,7 @@
 
     <groupId>cn.edu.nju.pasalab</groupId>
     <artifactId>kvstore-interface</artifactId>
-    <version>1.3.1-SNAPSHOT</version>
+    <version>1.3.2-SNAPSHOT</version>
     <dependencies>
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -133,7 +133,7 @@
                             </filters>
 
                             <!-- 如果为true则有一个普通jar包和一个-shade.jar包，如果为false合包去掉原来包的依赖关系，shade过的jar作为项目默认的包-->
-                            <shadedArtifactAttached>false</shadedArtifactAttached>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
                             <!-- When true, dependencies are kept in the pom but with scope 'provided'; when false, the dependency is removed. -->
                             <keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
                             <!-- When true, transitive deps of removed dependencies are promoted to direct dependencies. This should allow the drop in replacement of the removed deps with the new shaded jar and everything should still work. -->

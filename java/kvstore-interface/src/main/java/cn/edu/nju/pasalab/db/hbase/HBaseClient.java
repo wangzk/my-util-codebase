@@ -189,4 +189,9 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         hBaseOperation.deleteTable(this.dataTableNameString);
         hBaseOperation.createTable(this.dataTableNameString, this.columnFamily, numRegion);
     }
+
+    @Override
+    public void createDB() throws Exception {
+        hBaseOperation.createTable(this.dataTableNameString, this.columnFamily, numRegion);
+    }
 }

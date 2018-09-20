@@ -106,4 +106,6 @@ public abstract class BasicKVDatabaseClient {
      * Clear the contents in the database
      */
     public abstract void clearDB() throws Exception;
+
+    public abstract void createDB() throws Exception;
 }

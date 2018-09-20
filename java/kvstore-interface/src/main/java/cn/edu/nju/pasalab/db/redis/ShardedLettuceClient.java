@@ -194,6 +194,11 @@ public final class ShardedLettuceClient extends BasicKVDatabaseClient {
         LettuceFutures.awaitAll(1, TimeUnit.DAYS, futures.toArray(new RedisFuture[futures.size()]));
     }
 
+    @Override
+    public void createDB() throws Exception {
+
+    }
+
     private int fromKeyToServerID(byte[] key) {
         return (int) Math.abs(Arrays.hashCode(key)) % hosts.length;
     }

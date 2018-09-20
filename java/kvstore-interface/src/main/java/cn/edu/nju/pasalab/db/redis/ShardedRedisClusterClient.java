@@ -144,4 +144,9 @@ public final class ShardedRedisClusterClient extends BasicKVDatabaseClient {
        }).collect(Collectors.toList());
        CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).get();
     }
+
+    @Override
+    public void createDB() throws Exception {
+
+    }
 }
