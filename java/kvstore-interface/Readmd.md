@@ -14,3 +14,7 @@ Change the configuration item in the cache from `cache.capacity.in.gbytes` to `c
 ### 1.3.2
 
 Add createTable method to the interface.
+
+### 1.3.3
+
+Update HBase client, to make HBase client support multiple connections to increase the throughput.

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 
 import java.util.Arrays;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 /**
@@ -29,6 +30,8 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     public static final String DEFAULT_ZOOKEEPER_QUORUM = "localhost";
     public static final String CONF_USE_HASHED_KEY = "hbase.use.hashed.key";
     public static final String DEFAULT_USE_HASHED_KEY = "false";
+    public static final String CONF_NUM_CONNECTION = "hbase.num.connection";
+    public static final String DEFAULT_NUM_CONNECTION = "8";
 
 
 
@@ -38,15 +41,17 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     private byte[] columnFamily;
     private byte[] columnName;
     private int numRegion;
+    private int numConnection;
+    private AtomicInteger currentConnectionID;
     private String zookeeperQuorum;
     private boolean useHashedKey;
     private HBaseOperation hBaseOperation;
-    private Connection hbaseConnection;
+    private Connection hbaseConnections[];
 
     private Logger logger = Logger.getLogger(this.getClass().getName());
 
     private boolean isConnectionEstablished() {
-        return hbaseConnection != null;
+        return hbaseConnections != null;
     }
 
     private byte[] transformKey(byte[] key) {
@@ -65,6 +70,12 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         }
     }
 
+    private Connection getNextConnection() {
+        int id = currentConnectionID.addAndGet(1);
+        if (id < 0) id = -id;
+        return hbaseConnections[id % numConnection];
+    }
+
     /**
      * @param key
      * @return the value. Return null if the key does not exist.
@@ -74,7 +85,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     public byte[] get(byte[] key) throws Exception {
         assert isConnectionEstablished();
         byte[] actualKey = transformKey(key);
-        Table table = hbaseConnection.getTable(dataTableName);
+        Table table = getNextConnection().getTable(dataTableName);
         Get get = new Get(actualKey);
         get.addColumn(this.columnFamily, this.columnName);
         Result result = table.get(get);
@@ -92,7 +103,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     @Override
     public byte[][] getAll(byte keys[][]) throws Exception{
         byte[][] results = new byte[keys.length][];
-        Table table = hbaseConnection.getTable(this.dataTableName);
+        Table table = getNextConnection().getTable(this.dataTableName);
         ArrayList<Get> gets = new ArrayList<>(keys.length);
         for (int i = 0; i < keys.length; i++) {
             byte[] actualKey = transformKey(keys[i]);
@@ -113,7 +124,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
     @Override
     public void put(byte[] key, byte[] value) throws Exception {
         assert isConnectionEstablished();
-        Table table = hbaseConnection.getTable(dataTableName);
+        Table table = getNextConnection().getTable(dataTableName);
         byte[] actualKey = transformKey(key);
         Put put = new Put(actualKey);
         put.addColumn(this.columnFamily,this.columnName, value);
@@ -129,7 +140,7 @@ public final class HBaseClient extends BasicKVDatabaseClient {
      */
     @Override
     public void putAll(byte keys[][], byte values[][]) throws Exception {
-        BufferedMutator mutator = hbaseConnection.getBufferedMutator(dataTableName);
+        BufferedMutator mutator = getNextConnection().getBufferedMutator(dataTableName);
         for (int i = 0; i < keys.length; i++) {
             byte[] actualKey = transformKey(keys[i]);
             Put put = new Put(actualKey);
@@ -144,7 +155,8 @@ public final class HBaseClient extends BasicKVDatabaseClient {
      */
     @Override
     public void close() throws Exception {
-        hbaseConnection.close();
+        for (Connection connection: hbaseConnections)
+            connection.close();
         hBaseOperation.close();
     }
 
@@ -163,6 +175,8 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         conf.setProperty(CONF_NUM_REGION, Integer.toString(this.numRegion)); // further used by HBaseOperation
         this.zookeeperQuorum = conf.getProperty(CONF_ZOOKEEPER_QUORUM, DEFAULT_ZOOKEEPER_QUORUM);
         conf.setProperty(CONF_ZOOKEEPER_QUORUM, this.zookeeperQuorum); // further used by HBaseOperation
+        String numConnectionString = conf.getProperty(CONF_NUM_CONNECTION, DEFAULT_NUM_CONNECTION);
+        this.numConnection = Integer.parseInt(numConnectionString);
     }
 
     /**
@@ -176,9 +190,13 @@ public final class HBaseClient extends BasicKVDatabaseClient {
         loadConfiguration(conf);
         hBaseOperation = new HBaseOperation(conf);
         hadoopConf = hBaseOperation.gethConf();
-        hbaseConnection = ConnectionFactory.createConnection(hadoopConf);
+        hbaseConnections = new Connection[numConnection];
+        for (int i = 0; i < numConnection; i++) {
+            hbaseConnections[i] = ConnectionFactory.createConnection(hadoopConf);
+        }
+        currentConnectionID = new AtomicInteger(0);
         dataTableName = TableName.valueOf(this.dataTableNameString);
-        logger.info("HBase connection established.");
+        logger.info("HBase connections established.");
     }
 
     /**
