@@ -129,6 +129,11 @@ public class CachedClient extends BasicKVDatabaseClient {
         db.clearDB();
     }
 
+    @Override
+    public void createDB() throws Exception {
+        db.createDB();
+    }
+
     private void loadConfigurations(Properties conf) throws IOException {
         String capacityString = conf.getProperty(CONF_CACHE_CAPACITY, DEFAULT_CACHE_CAPACITY);
         this.cacheCapacityInBytes = Long.valueOf(capacityString);
