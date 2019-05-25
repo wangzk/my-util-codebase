@@ -1,4 +1,4 @@
-package cn.edu.nju.pasalab.db.util;
+package cn.edu.nju.pasalab.db.hbase.util;
 
 import org.xerial.snappy.Snappy;
 

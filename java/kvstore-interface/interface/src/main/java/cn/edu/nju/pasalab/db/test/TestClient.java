@@ -1,7 +1,6 @@
 package cn.edu.nju.pasalab.db.test;
 
 import cn.edu.nju.pasalab.db.BasicKVDatabaseClient;
-import cn.edu.nju.pasalab.db.redis.ShardedRedisClusterClient;
 import cn.edu.nju.pasalab.db.Utils;
 
 import java.io.FileInputStream;

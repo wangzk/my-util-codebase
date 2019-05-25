@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
-import cn.edu.nju.pasalab.db.util.CoderAndDecoder;
+import cn.edu.nju.pasalab.db.hbase.util.CoderAndDecoder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;

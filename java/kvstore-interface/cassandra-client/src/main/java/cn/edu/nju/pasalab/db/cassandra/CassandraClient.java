@@ -31,6 +31,7 @@ public class CassandraClient extends BasicKVDatabaseClient {
     private List<String> contactPoints;
     private String keyspace;
     private String tableName;
+    private String qulifiedTableName;
     private String keyColumnName;
     private String valueColumnName;
     private boolean useHashedKey;
@@ -60,7 +61,8 @@ public class CassandraClient extends BasicKVDatabaseClient {
         String contactPointsString = conf.getProperty(CONF_CONTACT_POINTS, DEFAULT_CONTACT_POINTS);
         this.contactPoints = Arrays.stream(contactPointsString.split(",")).collect(Collectors.toList());
         this.keyspace = conf.getProperty(CONF_KEYSPACE_NAME, DEFAULT_KEYSPACE_NAME);
-        this.tableName = this.keyspace + "." + conf.getProperty(CONF_TABLE_NAME, DEFAULT_TABLE_NAME);
+        this.tableName = conf.getProperty(CONF_TABLE_NAME, DEFAULT_TABLE_NAME);
+        this.qulifiedTableName = this.keyspace + "." + this.tableName;
         this.keyColumnName = conf.getProperty(CONF_COLUMN_KEY, DEFAULT_COLUMN_KEY);
         this.valueColumnName = conf.getProperty(CONF_COLUMN_VALUE, DEFAULT_COLUMN_VALUE);
         this.useHashedKey = Boolean.parseBoolean(conf.getProperty(CONF_USE_HASHED_KEY, DEFAULT_USE_HASHED_KEY));
@@ -69,37 +71,33 @@ public class CassandraClient extends BasicKVDatabaseClient {
     @Override
     public void connect(Properties conf) throws Exception {
         loadConfiguration(conf);
-        /*
         Cluster.Builder builder = Cluster.builder();
         contactPoints.forEach(point -> {
             System.out.println(point);
             builder.addContactPoint(point);
         });
         this.cluster = builder.build();
-         */
-        this.cluster = Cluster.builder().withPort(9042).addContactPoint("localhost").build();
         this.session = this.cluster.connect();
         logger.info("Cassandra database connection established.");
     }
 
     @Override
     public void clearDB() throws Exception {
-        StringBuilder statement = new StringBuilder();
-        statement.append("CREATE KEYSPACE " + this.keyspace + " WITH replication = {'class':'SimpleStrategy', 'replication_factor': 3};");
-        statement.append("DROP TABLE " + this.tableName + ";");
-        statement.append("CREATE TABLE " + this.tableName +
-                "( " + this.keyColumnName + " blob PRIMARY KEY, " + this.valueColumnName + " blob);");
-        session.execute(statement.toString());
+        if (this.cluster.getMetadata().getKeyspace(this.keyspace) == null) {
+            this.session.execute("CREATE KEYSPACE " + this.keyspace + " WITH replication = {'class':'SimpleStrategy', 'replication_factor': 3}");
+            logger.info("Create the keyspace");
+        }
+        if (this.cluster.getMetadata().getKeyspace(this.keyspace).getTable(this.tableName) != null) {
+            logger.info("Drop the old table.");
+            this.session.execute("DROP TABLE " + this.qulifiedTableName);
+        }
+        this.session.execute("CREATE TABLE " + this.qulifiedTableName +
+                "( " + this.keyColumnName + " blob PRIMARY KEY, " + this.valueColumnName + " blob)");
         logger.info("Table " + this.tableName + " re-created.");
     }
 
     @Override
     public void createDB() throws Exception {
-        StringBuilder statement = new StringBuilder();
-        statement.append("CREATE KEYSPACE " + this.keyspace + " WITH replication = {'class':'SimpleStrategy', 'replication_factor': 3};");
-        statement.append("CREATE TABLE " + this.tableName +
-                "( " + this.keyColumnName + " blob PRIMARY KEY, " + this.valueColumnName + " blob);");
-        session.execute(statement.toString());
-        logger.info("Keyspace " + this.keyspace + " re-created.");
+        clearDB();
     }
 }
