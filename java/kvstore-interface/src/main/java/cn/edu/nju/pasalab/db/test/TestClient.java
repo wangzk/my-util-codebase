@@ -45,6 +45,7 @@ public class TestClient {
         logger.info("Test client: " + clientClassName);
         BasicKVDatabaseClient client = (BasicKVDatabaseClient) Class.forName(clientClassName).newInstance();
         client.connect(conf);
+        client.createDB();
 
         // Prepare random data
         Set<Integer> keySet = new HashSet<>();
@@ -176,6 +177,7 @@ public class TestClient {
 
         client.close();
         logger.info("Done!");
+        System.exit(0);
     }
 
     static class Tuple<X, Y> {
