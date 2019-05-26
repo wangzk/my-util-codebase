@@ -9,16 +9,21 @@
     <version>1.3.6-SNAPSHOT</version>
 
    <dependencies>
-        <dependency>
+       <dependency>
             <groupId>cn.edu.nju.pasalab</groupId>
             <artifactId>kvstore-interface-interface</artifactId>
             <version>1.3.6-SNAPSHOT</version>
-        </dependency>
+       </dependency>
        <dependency>
             <groupId>org.caffinitas.ohc</groupId>
             <artifactId>ohc-core-j8</artifactId>
             <version>0.6.1</version>
-        </dependency>
+       </dependency>
+       <dependency>
+            <groupId>it.unimi.dsi</groupId>
+            <artifactId>fastutil</artifactId>
+            <version>8.2.2</version>
+       </dependency>
    </dependencies>
 
     <build>
@@ -83,6 +88,10 @@
                                 <relocation>
                                     <pattern>com.google</pattern>
                                     <shadedPattern>cn.edu.nju.pasalab.db.cache.shaded.com.google</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>it.unimi.dsi</pattern>
+                                    <shadedPattern>cn.edu.nju.pasalab.db.cache.shaded.it.unimi.dsi</shadedPattern>
                                 </relocation>
                             </relocations>
 
