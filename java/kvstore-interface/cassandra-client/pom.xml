@@ -20,6 +20,11 @@
             <version>3.7.1</version>
             <type>jar</type>
         </dependency>
+       <dependency>
+           <groupId>com.google.guava</groupId>
+           <artifactId>guava</artifactId>
+           <version>18.0</version>
+       </dependency>
    </dependencies>
 
     <build>
@@ -71,13 +76,13 @@
                             </filters>
 
                             <!-- 如果为true则有一个普通jar包和一个-shade.jar包，如果为false合包去掉原来包的依赖关系，shade过的jar作为项目默认的包-->
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedArtifactAttached>false</shadedArtifactAttached>
                             <!-- When true, dependencies are kept in the pom but with scope 'provided'; when false, the dependency is removed. -->
                             <keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
                             <!-- When true, transitive deps of removed dependencies are promoted to direct dependencies. This should allow the drop in replacement of the removed deps with the new shaded jar and everything should still work. -->
                             <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
                             <!--jar包的pom.xml里去掉了dependency(META-INF/maven/$groupId/$artifactId/pom.xml)，并创建了一个dependency-reduced-pom.xml在根目录-->
-                            <createDependencyReducedPom>true</createDependencyReducedPom>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <!-- 生成source包，如果依赖的包没有source会报错-->
                             <createSourcesJar>false</createSourcesJar>
                             <relocations>
