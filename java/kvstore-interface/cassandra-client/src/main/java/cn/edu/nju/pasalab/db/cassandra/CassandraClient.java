@@ -191,7 +191,8 @@ public class CassandraClient extends BasicKVDatabaseClient {
     private void createTable() {
         logger.info("Try to create the table.");
         ResultSet r = this.session.execute("CREATE TABLE IF NOT EXISTS " + this.qulifiedTableName +
-                "(" + this.keyColumnName + " blob PRIMARY KEY, " + this.valueColumnName + " blob);");
+                "(" + this.keyColumnName + " blob PRIMARY KEY, " + this.valueColumnName + " blob) " +
+                "WITH caching = { 'keys': 'ALL', 'rows_per_partition': 'ALL'};");
         logger.info(r.toString());
     }
 
