@@ -148,6 +148,7 @@ public class CassandraClient extends BasicKVDatabaseClient {
             System.out.println(point);
             builder.addContactPoint(point);
         });
+        builder.withSocketOptions(new SocketOptions().setReadTimeoutMillis(20 * 60 * 1000)); // Set read timeout to 20min
         this.cluster = builder.build();
         this.session = this.cluster.connect();
         logger.info("Cassandra database connection established.");
