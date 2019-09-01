@@ -182,18 +182,26 @@ public class CassandraClient extends BasicKVDatabaseClient {
     }
 
     private void prepareStatements() {
-        this.getStatement = this.session.prepare("SELECT " + this.valueColumnName
+        String getQuery = "SELECT " + this.valueColumnName
                 + " FROM " + this.qulifiedTableName
-                + " WHERE " + this.keyColumnName + " = ?");
-        this.putStatement = this.session.prepare("INSERT INTO " + this.qulifiedTableName
-                + " (" + this.keyColumnName + "," + this.valueColumnName + ") VALUES (?, ?)");
+                + " WHERE " + this.keyColumnName + " = ?";
+        this.getStatement = this.session.prepare(getQuery);
+        this.getStatement.setConsistencyLevel(ConsistencyLevel.ONE);
+        String putQuery = "INSERT INTO " + this.qulifiedTableName
+                + " (" + this.keyColumnName + "," + this.valueColumnName + ") VALUES (?, ?)";
+        this.putStatement = this.session.prepare(putQuery);
+        //For write query, we want the most severe consistency level
+        this.putStatement.setConsistencyLevel(ConsistencyLevel.ALL);
     }
 
     private void createTable() {
         logger.info("Try to create the table.");
-        ResultSet r = this.session.execute("CREATE TABLE IF NOT EXISTS " + this.qulifiedTableName +
+        String query = "CREATE TABLE IF NOT EXISTS " + this.qulifiedTableName +
                 "(" + this.keyColumnName + " blob PRIMARY KEY, " + this.valueColumnName + " blob) " +
-                "WITH caching = { 'keys': 'ALL', 'rows_per_partition': 'ALL'};");
+                "WITH caching = { 'keys': 'ALL', 'rows_per_partition': 'ALL'};";
+        Statement createStatement = new SimpleStatement(query);
+        createStatement.setConsistencyLevel(ConsistencyLevel.ALL);
+        ResultSet r = this.session.execute(createStatement);
         logger.info(r.toString());
     }
 
