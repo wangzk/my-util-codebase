@@ -1,41 +1,25 @@
 #ifndef TIMER_H
 #define TIMER_H
 
+#include <chrono>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
-
-using namespace std;
-
-class Timer {
+class Timer
+{
 private:
-
-    timeval startTime;
+    std::chrono::time_point<std::chrono::system_clock> startTime;
 
 public:
 
-    void start(){
-        gettimeofday(&startTime, NULL);
+    void start()
+    {
+        this->startTime = std::chrono::system_clock::now();
     }
-
-    double stop(){
-        timeval endTime;
-        long seconds, useconds;
-        double duration;
-
-        gettimeofday(&endTime, NULL);
-
-        seconds  = endTime.tv_sec  - startTime.tv_sec;
-        useconds = endTime.tv_usec - startTime.tv_usec;
-
-        duration = seconds + useconds/1000000.0;
-
-        return duration;
-    }
-
-    static void printTime(double duration){
-        printf("%5.6f seconds\n", duration);
+    /* return the elapsed seconds since start() */
+    double stop()
+    {
+        auto endTime = std::chrono::system_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - this->startTime);
+        return duration.count() / 1e6;
     }
 };
 
